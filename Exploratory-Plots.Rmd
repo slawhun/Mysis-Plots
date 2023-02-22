@@ -1,0 +1,186 @@
+---
+title: Updated Mysis 2022 Lake Michigan Data Exploratory Plots
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+```
+
+```{r}
+library(tidyverse)
+library(tidyr)
+library(dplyr)
+library(rmarkdown)
+library(mgcv)
+library(sf)
+library(raster)
+```
+```{r}
+GLNPO <- read.csv("C:\\Users\\sarah\\Documents\\Cornell\\Mysid Data\\Exploratory Plots\\Mysis-Plots\\MI_OutputByStation_CSV.csv")
+summary(GLNPO)
+```
+```{r}
+colnames(GLNPO)
+```
+
+Does density increase with depth in Lake Michigan?
+```{r}
+ggplot(data = GLNPO, mapping = aes(x = Station_Depth_m, y = AvgDens)) + 
+  geom_point(mapping = aes(color = Year_), shape = 1) + 
+  geom_smooth(method = "lm", se = F)
+```
+
+How does density relate to biomass?
+```{r}
+ggplot(data = GLNPO, mapping = aes(x = AvgBmss_mg, y = AvgDens)) + geom_point(mapping = aes(color = Year_), shape = 1) + geom_smooth(method = "lm", se = F)
+```
+Does the relationship between biomass and density change year to year?
+```{r}
+ggplot(data = GLNPO, mapping = aes(x = AvgBmss_mg, y = AvgDens)) + geom_point(mapping = aes(color = Season), shape = 1) + geom_smooth(method = "lm", se = F) + facet_wrap(~Year_)
+```
+
+```{r}
+ggplot(data = GLNPO, mapping = aes(x = AvgBmss_mg, y = AvgDens)) + geom_point(mapping = aes(color = Season), shape = 1) + geom_smooth(method = "lm", se = F) + facet_wrap(~Season)
+```
+
+Density and biomass over the years, colored by season
+
+```{r}
+ ggplot(data = GLNPO) + geom_point(mapping = aes(x = Year_, y = AvgDens, color = Season, size = AvgBmss_mg), shape = 9) 
+```
+```{r}
+ggplot(data = GLNPO) + geom_point(mapping = aes(x = Year_, y = AvgDens, color = Season, size = AvgBmss_mg), shape=1) + geom_smooth(mapping = aes(x = Year_, y = AvgDens)) + facet_wrap(~Season)
+```
+```{r}
+ggplot(data = GLNPO) + geom_point(mapping = aes(x = Year_, y = AvgDens, color = Season)) + geom_smooth(mapping = aes(x = Year_, y = AvgDens)) + facet_wrap(~Season)
+```
+```{r}
+ggplot(data = GLNPO) + geom_point(mapping = aes(x = Year_, y = AvgBmss_mg, color = Season)) + geom_smooth(mapping = aes(x = Year_, y = AvgBmss_mg)) + facet_wrap(~Season)
+```
+```{r}
+ggplot(GLNPO, aes(x = Year_, y = AvgDens, color = Season, shape = Season)) + geom_point() + geom_smooth(aes(linetype = Season)) + facet_wrap(~Season)
+```
+Basic Density and Biomass GAMs
+
+```{r}
+Dens <- GLNPO$AvgDens
+Year <- GLNPO$Year_
+DensGAM <- gam(Dens ~ s(Year))
+summary(DensGAM)
+```
+```{r}
+plot(DensGAM, bg="green", col="#336666", xlab = "Year", ylab = "Average Density", main = "Mysis Density in Lake Michigan 2006-2021 Using GLNPO Data")
+```
+
+```{r}
+Bmss <- GLNPO$AvgBmss_mg
+BmssGAM <- gam(Bmss ~ s(Year))
+summary(BmssGAM)
+```
+```{r}
+plot(BmssGAM, col="blue", xlab = "Year", ylab = "Average Biomass", main = "Mysis Biomass in Lake Michigan 2006-2021 Using GLNPO Data")
+```
+Exploratory non-parametric regressions using ggplot
+
+```{r}
+GLNPO <- read.csv("C:\\Users\\sarah\\Documents\\Cornell\\Mysid Data\\Exploratory Plots\\Mysis-Plots\\MI_OutputByStation_CSV.csv")
+```
+
+
+```{r}
+require(smooth)
+library(tidyverse)
+library(ggpubr)
+```
+```{r}
+Depth <- GLNPO$Station_Depth_m
+Season <- GLNPO$Season
+```
+
+Linear regression
+
+```{r}
+gg.lm <- ggplot(GLNPO,aes(x = Year_,y = AvgDens, col=Season)) + geom_point() + geom_smooth(method = 'lm') + facet_wrap(~Season)
+print(gg.lm)
+
+gg.lm <- ggplot(GLNPO,aes(x = Year_,y = AvgDens)) + geom_point(mapping = aes(size = Depth), shape = 1, color = "darkcyan") + geom_smooth(method = 'lm') + facet_wrap(~Season)
+print(gg.lm)
+```
+
+Quadratic regression
+
+```{r}
+gg.qua <- ggplot(GLNPO,aes(x = Year_, y=AvgDens, col=Season)) + geom_point() + geom_smooth(method = 'lm', formula = y~poly(x,2)) + facet_grid(~Season)
+print(gg.qua)
+```
+
+Cubic regression
+
+```{r}
+gg.cub <- ggplot(GLNPO,aes(x = Year_, y = AvgDens, col=Season)) + geom_point() + geom_smooth(method='lm', formula = y ~ poly(x,2)) + facet_wrap(~Season)
+print(gg.cub)
+```
+
+Loess
+
+```{r}
+gg.lo <- ggplot(GLNPO, aes(x = Year_, y=AvgDens, col=Season)) + geom_point() + geom_smooth(method = 'loess') + facet_wrap(~Season)
+print(gg.lo)
+```
+
+Natural splines, GAMs
+
+```{r}
+gg.ns2 <- ggplot(GLNPO, aes(x = Year_, y = AvgDens, col=Season)) +
+  geom_point() +
+  geom_smooth(method = 'gam', formula = y ~ splines::ns(x,2)) +
+  facet_wrap(~Season)
+print(gg.ns2)
+```
+```{r}
+gg.ns3 <- ggplot(GLNPO, aes(x = Year_, y = AvgDens, col = Season)) +
+  geom_point() +
+  geom_smooth(method = 'gam', formula = y ~ splines::ns(x,3)) +
+  facet_wrap(~Season)
+print(gg.ns3)
+```
+```{r}
+gg.bs2 <- ggplot(GLNPO, aes(x = Year_, y = AvgDens, col=Season)) +
+  geom_point() +
+  geom_smooth(method = 'gam', formula = y ~ splines::bs(x,2)) +
+  facet_wrap(~Season)
+print(gg.bs2)
+```
+```{r}
+gg.ns30 <- ggplot(GLNPO, aes(x = Year_, y = AvgDens, col=Season)) +
+  geom_point() +
+  geom_smooth(method = 'gam', formula = y ~ splines::ns(x,30)) +
+  facet_wrap(~Season)
+plot(gg.ns30)
+```
+```{r}
+gg.bs30 <- ggplot(GLNPO, aes(x = Year_, y = AvgDens, col=Season)) +
+  geom_point() +
+  geom_smooth(method = 'gam', formula = y ~ splines::bs(x,30)) +
+  facet_wrap(~Season)
+plot(gg.bs30)
+```
+Significance of Station Depth
+
+```{r}
+ggplot(data = GLNPO, mapping = aes(x = Station_Depth_m, y = AvgDens)) + geom_point() + geom_smooth(method = "lm", se = F)
+
+summary(lm(AvgDens~Station_Depth_m, data=GLNPO))
+```
+
+```{r}
+ggplot(data = GLNPO, mapping = aes(x = AvgOfLatitude, y = AvgDens)) + geom_point() + geom_smooth(method = "lm", se = F)
+```
+
+```{r}
+mi <- st_read("C:\\Users\\sarah\\Documents\\Cornell\\Mysid Data\\Bathymetry_Data\\Lake_Michigan_Contours\\Lake_Michigan_Contours.shp")
+
+mi_coords <- do.call(rbind, st_geometry(mi)) %>% as_tibble() %>% setNames(c("lon", "lat"))
+```
+
